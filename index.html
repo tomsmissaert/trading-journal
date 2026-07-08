@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Journal Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a',
+                        cardBg: '#1e293b',
+                        accentGreen: '#10b981',
+                        accentRed: '#f43f5e'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkBg text-slate-100 font-sans min-h-screen p-4 md:p-8">
+
+    <div class="max-w-7xl  mx-auto space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-700 pb-4">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-white">Trading Journal</h1>
+                <p class="text-sm text-slate-400 mt-1">Performance tracking & algorithmic logs</p>
+            </div>
+            <div class="mt-4 md:mt-0 bg-slate-800 px-4 py-2 rounded-lg border border-slate-700 text-sm">
+                Starting Account Value: <span class="font-mono text-white font-semibold">$5,000.00</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Current Account Value</p>
+                <p id="current-balance" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">$5,000.00</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Net Profit / Loss</p>
+                <p id="net-pnl" class="text-2xl font-bold tracking-tight mt-1 font-mono">$0.00</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
+                <p id="win-rate" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">0.0%</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Profit Factor</p>
+                <p id="profit-factor" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">0.00</p>
+            </div>
+        </div>
+
+        <div class="bg-cardBg p-6 rounded-xl border border-slate-800">
+            <h2 class="text-lg font-semibold text-white mb-4">Equity Curve (Account Growth)</h2>
+            <div class="h-80 w-full">
+                <canvas id="equityChart"></canvas>
+            </div>
+        </div>
+
+        <div class="bg-cardBg rounded-xl border border-slate-800 overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+                <h2 class="text-lg font-semibold text-white">Executed Trades Log</h2>
+                <div class="text-xs text-slate-400">
+                    Total Trades: <span id="total-trades" class="font-mono text-white font-semibold">0</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-900 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-800">
+                            <th class="px-6 py-3">Timestamp</th>
+                            <th class="px-6 py-3">Symbol</th>
+                            <th class="px-6 py-3 text-right">Contracts</th>
+                            <th class="px-6 py-3 text-right">Entry</th>
+                            <th class="px-6 py-3 text-right">Exit</th>
+                            <th class="px-6 py-3 text-right">Return %</th>
+                            <th class="px-6 py-3 text-right">Net PnL</th>
+                        </tr>
+                    </thead>
+                    <tbody id="trade-table-body" class="divide-y divide-slate-800 text-sm font-mono">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. Initial configuration
+        const STARTING_BALANCE = 5000.00;
+
+        // 2. Parsed raw CSV data array
+        const rawTrades = [
+            { timestamp: "2026-06-23 12:44:41", symbol: "SPY 260623P00734000", contracts: 5, entry: 0.42, exit: 0.36, pct: -14.3, pnl: -30.00 },
+            { timestamp: "2026-06-23 12:52:26", symbol: "SPY 260623C00735000", contracts: 5, entry: 0.42, exit: 0.55, pct: 31.0, pnl: 65.00 },
+            { timestamp: "2026-06-24 07:47:25", symbol: "SPY 260624C00738000", contracts: 1, entry: 1.54, exit: 2.00, pct: 29.9, pnl: 46.00 },
+            { timestamp: "2026-06-24 07:59:37", symbol: "SPY 260624C00738000", contracts: 1, entry: 1.84, exit: 2.39, pct: 29.9, pnl: 55.00 },
+            { timestamp: "2026-06-24 08:14:37", symbol: "SPY 260624P00738000", contracts: 1, entry: 1.46, exit: 1.24, pct: -15.1, pnl: -22.00 },
+            { timestamp: "2026-06-24 08:29:36", symbol: "SPY 260624P00739000", contracts: 1, entry: 1.42, exit: 1.21, pct: -14.8, pnl: -21.00 },
+            { timestamp: "2026-06-24 12:32:32", symbol: "SPY 260624C00732000", contracts: 2, entry: 1.07, exit: 0.91, pct: -15.0, pnl: -32.00 },
+            { timestamp: "2026-06-24 12:38:13", symbol: "SPY 260624C00732000", contracts: 2, entry: 0.92, exit: 0.78, pct: -15.2, pnl: -28.00 },
+            { timestamp: "2026-06-25 07:52:44", symbol: "SPY 260625C00736000", contracts: 1, entry: 2.32, exit: 3.02, pct: 30.2, pnl: 70.00 },
+            { timestamp: "2026-06-25 10:12:31", symbol: "SPY 260625C00733000", contracts: 1, entry: 1.68, exit: 1.43, pct: -14.9, pnl: -25.00 },
+            { timestamp: "2026-06-25 10:28:18", symbol: "SPY 260625C00734000", contracts: 2, entry: 1.10, exit: 0.93, pct: -15.5, pnl: -34.00 }
+        ];
+
+        // Sort chronologically by timestamp
+        const trades = rawTrades.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // 3. Process metrics
+        let totalPnL = 0;
+        let wins = 0;
+        let grossWins = 0;
+        let grossLosses = 0;
+        
+        const chartLabels = ["Start"];
+        const chartData = [STARTING_BALANCE];
+        let runningBalance = STARTING_BALANCE;
+
+        const tableBody = document.getElementById('trade-table-body');
+
+        trades.forEach(trade => {
+            totalPnL += trade.pnl;
+            runningBalance += trade.pnl;
+            
+            // Track win/loss metrics
+            if (trade.pnl > 0) {
+                wins++;
+                grossWins += trade.pnl;
+            } else {
+                grossLosses += Math.abs(trade.pnl);
+            }
+
+            // Append data structures for chart plotting
+            chartLabels.push(trade.timestamp.split(' ')[0]); // Using just date for neatness
+            chartData.push(runningBalance);
+
+            // Dynamically construct table row
+            const pnlClass = trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+            const sign = trade.pnl >= 0 ? '+' : '';
+            
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-slate-800/50 transition-colors border-b border-slate-800/50';
+            row.innerHTML = `
+                <td class="px-6 py-3.5 text-slate-400 whitespace-nowrap">${trade.timestamp}</td>
+                <td class="px-6 py-3.5 text-slate-200 font-semibold">${trade.symbol}</td>
+                <td class="px-6 py-3.5 text-right text-slate-300">${trade.contracts}</td>
+                <td class="px-6 py-3.5 text-right text-slate-300">$${trade.entry.toFixed(2)}</td>
+                <td class="px-6 py-3.5 text-right text-slate-300">$${trade.exit.toFixed(2)}</td>
+                <td class="px-6 py-3.5 text-right ${pnlClass}">${sign}${trade.pct.toFixed(1)}%</td>
+                <td class="px-6 py-3.5 text-right font-semibold ${pnlClass}">${sign}$${trade.pnl.toFixed(2)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+
+        // Calculate and render structural stats
+        const finalBalance = STARTING_BALANCE + totalPnL;
+        const winRatePct = trades.length > 0 ? (wins / trades.length) * 100 : 0;
+        const profitFactor = grossLosses === 0 ? grossWins : (grossWins / grossLosses);
+
+        document.getElementById('current-balance').innerText = `$${finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        
+        const pnlEl = document.getElementById('net-pnl');
+        pnlEl.innerText = `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`;
+        pnlEl.className = `text-2xl font-bold tracking-tight mt-1 font-mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
+        document.getElementById('win-rate').innerText = `${winRatePct.toFixed(1)}%`;
+        document.getElementById('profit-factor').innerText = profitFactor.toFixed(2);
+        document.getElementById('total-trades').innerText = trades.length;
+
+        // 4. Initialize Chart.js configuration
+        const ctx = document.getElementById('equityChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    label: 'Account Equity ($)',
+                    data: chartData,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.05)',
+                    borderWidth: 2,
+                    tension: 0.15,
+                    fill: true,
+                    pointBackgroundColor: '#1e293b',
+                    pointBorderColor: '#10b981',
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { color: '#334155', drawBorder: false },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    y: {
+                        grid: { color: '#334155', drawBorder: false },
+                        ticks: { color: '#94a3b8', callback: (value) => '$' + value }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
