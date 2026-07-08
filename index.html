@@ -13,9 +13,7 @@
                 extend: {
                     colors: {
                         darkBg: '#0f172a',
-                        cardBg: '#1e293b',
-                        accentGreen: '#10b981',
-                        accentRed: '#f43f5e'
+                        cardBg: '#1e293b'
                     }
                 }
             }
@@ -35,14 +33,18 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Current Account Value</p>
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Current Balance</p>
                 <p id="current-balance" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
             </div>
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
-                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Net Profit / Loss</p>
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Net PnL</p>
                 <p id="net-pnl" class="text-2xl font-bold tracking-tight mt-1 font-mono">...</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Return</p>
+                <p id="total-return" class="text-2xl font-bold tracking-tight mt-1 font-mono">...</p>
             </div>
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
@@ -54,10 +56,22 @@
             </div>
         </div>
 
-        <div class="bg-cardBg p-6 rounded-xl border border-slate-800">
-            <h2 class="text-lg font-semibold text-white mb-4">Equity Curve (Account Growth)</h2>
-            <div class="h-80 w-full">
-                <canvas id="equityChart"></canvas>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 bg-cardBg p-6 rounded-xl border border-slate-800">
+                <h2 class="text-lg font-semibold text-white mb-4">Equity Curve (End of Day)</h2>
+                <div class="h-80 w-full">
+                    <canvas id="equityChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-cardBg p-6 rounded-xl border border-slate-800 flex flex-col">
+                <h2 class="text-lg font-semibold text-white mb-4">Monthly Performance</h2>
+                <div class="flex-grow overflow-y-auto">
+                    <table class="w-full text-left border-collapse">
+                        <tbody id="monthly-table-body" class="divide-y divide-slate-800 text-sm font-mono">
+                            </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -130,17 +144,14 @@
 2026-07-08 10:21:41,SPY   260708C00744000,3,$1.42,$1.85,+30.3%,$+129.00`;
         // =====================================================================
 
-        // CSV Parser Function
         function parseCSV(csvText) {
             const lines = csvText.trim().split('\n');
             const parsedTrades = [];
             
-            // Skip header row (start at i=1)
             for (let i = 1; i < lines.length; i++) {
                 const row = lines[i].split(',');
                 if (row.length < 7) continue; 
                 
-                // Remove formatting characters ($, %, +, spaces) to get raw floats
                 const cleanNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ''));
 
                 parsedTrades.push({
@@ -156,7 +167,6 @@
             return parsedTrades;
         }
 
-        // Run Parser and sort chronologically
         const trades = parseCSV(csvData).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         // Analytics variables
@@ -165,9 +175,10 @@
         let grossWins = 0;
         let grossLosses = 0;
         
-        const chartLabels = ["Start"];
-        const chartData = [STARTING_BALANCE];
+        // Grouping Data Structures
+        const dailyBalances = { "Start": STARTING_BALANCE };
         let runningBalance = STARTING_BALANCE;
+        const monthlyData = {}; 
 
         const tableBody = document.getElementById('trade-table-body');
 
@@ -182,12 +193,16 @@
                 grossLosses += Math.abs(trade.pnl);
             }
 
-            // Append data structures for chart plotting
-            // Only grabbing the date portion for the chart X-axis
-            chartLabels.push(trade.timestamp.split(' ')[0] || trade.timestamp); 
-            chartData.push(runningBalance);
+            // 1. Group for the Chart (Overwrites to keep only the End-of-Day balance)
+            const dateStr = trade.timestamp.split(' ')[0] || trade.timestamp; 
+            dailyBalances[dateStr] = runningBalance;
 
-            // Construct table row
+            // 2. Group for Monthly Stats
+            const monthStr = trade.timestamp.substring(0, 7); // Extracts "YYYY-MM"
+            if (!monthlyData[monthStr]) monthlyData[monthStr] = 0;
+            monthlyData[monthStr] += trade.pnl;
+
+            // Construct main table row
             const pnlClass = trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
             const sign = trade.pnl >= 0 ? '+' : '';
             
@@ -207,6 +222,7 @@
 
         // Dashboard Stat Rendering
         const finalBalance = STARTING_BALANCE + totalPnL;
+        const totalReturnPct = (totalPnL / STARTING_BALANCE) * 100;
         const winRatePct = trades.length > 0 ? (wins / trades.length) * 100 : 0;
         const profitFactor = grossLosses === 0 ? grossWins : (grossWins / grossLosses);
 
@@ -216,27 +232,55 @@
         pnlEl.innerText = `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         pnlEl.className = `text-2xl font-bold tracking-tight mt-1 font-mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
 
+        const returnEl = document.getElementById('total-return');
+        returnEl.innerText = `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`;
+        returnEl.className = `text-2xl font-bold tracking-tight mt-1 font-mono ${totalReturnPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+
         document.getElementById('win-rate').innerText = `${winRatePct.toFixed(1)}%`;
         document.getElementById('profit-factor').innerText = profitFactor.toFixed(2);
         document.getElementById('total-trades').innerText = trades.length;
 
-        // Equity Curve Setup
+        // Render Monthly Table
+        const monthlyTableBody = document.getElementById('monthly-table-body');
+        // Convert "YYYY-MM" to readable "Month Year" (e.g., "June 2026")
+        const formatMonth = (str) => {
+            const [year, month] = str.split('-');
+            const date = new Date(year, parseInt(month) - 1);
+            return date.toLocaleString('default', { month: 'long', year: 'numeric' });
+        };
+
+        Object.entries(monthlyData).forEach(([monthRaw, mPnl]) => {
+            const mClass = mPnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+            const mSign = mPnl >= 0 ? '+' : '';
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="py-3 text-slate-200 font-semibold">${formatMonth(monthRaw)}</td>
+                <td class="py-3 text-right font-semibold ${mClass}">${mSign}$${mPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            `;
+            monthlyTableBody.appendChild(row);
+        });
+
+        // Equity Curve Setup (Using Daily Aggregation)
+        const chartLabels = Object.keys(dailyBalances);
+        const chartData = Object.values(dailyBalances);
+
         const ctx = document.getElementById('equityChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
             data: {
                 labels: chartLabels,
                 datasets: [{
-                    label: 'Account Equity ($)',
+                    label: 'End of Day Equity ($)',
                     data: chartData,
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.05)',
                     borderWidth: 2,
-                    tension: 0.15,
+                    tension: 0.1,
                     fill: true,
                     pointBackgroundColor: '#1e293b',
                     pointBorderColor: '#10b981',
-                    pointHoverRadius: 6
+                    pointHoverRadius: 6,
+                    stepped: false
                 }]
             },
             options: {
@@ -246,7 +290,7 @@
                 scales: {
                     x: {
                         grid: { color: '#334155', drawBorder: false },
-                        ticks: { color: '#94a3b8', maxTicksLimit: 10 }
+                        ticks: { color: '#94a3b8', maxTicksLimit: 12 }
                     },
                     y: {
                         grid: { color: '#334155', drawBorder: false },
