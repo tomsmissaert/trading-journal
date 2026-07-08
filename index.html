@@ -24,7 +24,7 @@
 </head>
 <body class="bg-darkBg text-slate-100 font-sans min-h-screen p-4 md:p-8">
 
-    <div class="max-w-7xl  mx-auto space-y-6">
+    <div class="max-w-7xl mx-auto space-y-6">
         <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-700 pb-4">
             <div>
                 <h1 class="text-3xl font-bold tracking-tight text-white">Trading Journal</h1>
@@ -38,19 +38,19 @@
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Current Account Value</p>
-                <p id="current-balance" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">$5,000.00</p>
+                <p id="current-balance" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
             </div>
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Net Profit / Loss</p>
-                <p id="net-pnl" class="text-2xl font-bold tracking-tight mt-1 font-mono">$0.00</p>
+                <p id="net-pnl" class="text-2xl font-bold tracking-tight mt-1 font-mono">...</p>
             </div>
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Win Rate</p>
-                <p id="win-rate" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">0.0%</p>
+                <p id="win-rate" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
             </div>
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Profit Factor</p>
-                <p id="profit-factor" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">0.00</p>
+                <p id="profit-factor" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
             </div>
         </div>
 
@@ -68,10 +68,10 @@
                     Total Trades: <span id="total-trades" class="font-mono text-white font-semibold">0</span>
                 </div>
             </div>
-            <div class="overflow-x-auto">
+            <div class="overflow-x-auto max-h-[600px]">
                 <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="bg-slate-900 text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-800">
+                    <thead class="sticky top-0 bg-slate-900 z-10">
+                        <tr class="text-slate-400 text-xs font-semibold uppercase tracking-wider border-b border-slate-800">
                             <th class="px-6 py-3">Timestamp</th>
                             <th class="px-6 py-3">Symbol</th>
                             <th class="px-6 py-3 text-right">Contracts</th>
@@ -89,28 +89,55 @@
     </div>
 
     <script>
-        // 1. Initial configuration
         const STARTING_BALANCE = 5000.00;
 
-        // 2. Parsed raw CSV data array
-        const rawTrades = [
-            { timestamp: "2026-06-23 12:44:41", symbol: "SPY 260623P00734000", contracts: 5, entry: 0.42, exit: 0.36, pct: -14.3, pnl: -30.00 },
-            { timestamp: "2026-06-23 12:52:26", symbol: "SPY 260623C00735000", contracts: 5, entry: 0.42, exit: 0.55, pct: 31.0, pnl: 65.00 },
-            { timestamp: "2026-06-24 07:47:25", symbol: "SPY 260624C00738000", contracts: 1, entry: 1.54, exit: 2.00, pct: 29.9, pnl: 46.00 },
-            { timestamp: "2026-06-24 07:59:37", symbol: "SPY 260624C00738000", contracts: 1, entry: 1.84, exit: 2.39, pct: 29.9, pnl: 55.00 },
-            { timestamp: "2026-06-24 08:14:37", symbol: "SPY 260624P00738000", contracts: 1, entry: 1.46, exit: 1.24, pct: -15.1, pnl: -22.00 },
-            { timestamp: "2026-06-24 08:29:36", symbol: "SPY 260624P00739000", contracts: 1, entry: 1.42, exit: 1.21, pct: -14.8, pnl: -21.00 },
-            { timestamp: "2026-06-24 12:32:32", symbol: "SPY 260624C00732000", contracts: 2, entry: 1.07, exit: 0.91, pct: -15.0, pnl: -32.00 },
-            { timestamp: "2026-06-24 12:38:13", symbol: "SPY 260624C00732000", contracts: 2, entry: 0.92, exit: 0.78, pct: -15.2, pnl: -28.00 },
-            { timestamp: "2026-06-25 07:52:44", symbol: "SPY 260625C00736000", contracts: 1, entry: 2.32, exit: 3.02, pct: 30.2, pnl: 70.00 },
-            { timestamp: "2026-06-25 10:12:31", symbol: "SPY 260625C00733000", contracts: 1, entry: 1.68, exit: 1.43, pct: -14.9, pnl: -25.00 },
-            { timestamp: "2026-06-25 10:28:18", symbol: "SPY 260625C00734000", contracts: 2, entry: 1.10, exit: 0.93, pct: -15.5, pnl: -34.00 }
-        ];
+        // =====================================================================
+        // PASTE YOUR ENTIRE CSV CONTENT BELOW (BETWEEN THE BACKTICKS)
+        // =====================================================================
+        const csvData = `Timestamp,Symbol,Contracts,Entry Price,Exit Price,Pct PnL,Net Profit ($)
+2026-06-23 12:44:41,SPY   260623P00734000,5,$0.42,$0.36,-14.3%,$-30.00
+2026-06-23 12:52:26,SPY   260623C00735000,5,$0.42,$0.55,+31.0%,$+65.00
+2026-06-24 07:47:25,SPY   260624C00738000,1,$1.54,$2.00,+29.9%,$+46.00
+2026-06-24 07:59:37,SPY   260624C00738000,1,$1.84,$2.39,+29.9%,$+55.00
+2026-06-24 08:14:37,SPY   260624P00738000,1,$1.46,$1.24,-15.1%,$-22.00
+2026-06-24 08:29:36,SPY   260624P00739000,1,$1.42,$1.21,-14.8%,$-21.00
+2026-06-24 12:32:32,SPY   260624C00732000,2,$1.07,$0.91,-15.0%,$-32.00
+2026-06-24 12:38:13,SPY   260624C00732000,2,$0.92,$0.78,-15.2%,$-28.00
+2026-06-25 07:52:44,SPY   260625C00736000,1,$2.32,$3.02,+30.2%,$+70.00
+2026-06-25 10:12:31,SPY   260625C00733000,1,$1.68,$1.43,-14.9%,$-25.00
+2026-06-25 10:28:18,SPY   260625C00734000,2,$1.10,$0.93,-15.5%,$-34.00`;
+        // =====================================================================
 
-        // Sort chronologically by timestamp
-        const trades = rawTrades.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        // CSV Parser Function
+        function parseCSV(csvText) {
+            const lines = csvText.trim().split('\\n');
+            const parsedTrades = [];
+            
+            // Skip header row (start at i=1)
+            for (let i = 1; i < lines.length; i++) {
+                const row = lines[i].split(',');
+                if (row.length < 7) continue; 
+                
+                // Remove formatting characters ($, %, +, spaces) to get raw floats
+                const cleanNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ''));
 
-        // 3. Process metrics
+                parsedTrades.push({
+                    timestamp: row[0].trim(),
+                    symbol: row[1].trim(),
+                    contracts: parseInt(row[2]),
+                    entry: cleanNumber(row[3]),
+                    exit: cleanNumber(row[4]),
+                    pct: cleanNumber(row[5]),
+                    pnl: cleanNumber(row[6])
+                });
+            }
+            return parsedTrades;
+        }
+
+        // Run Parser and sort chronologically
+        const trades = parseCSV(csvData).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        // Analytics variables
         let totalPnL = 0;
         let wins = 0;
         let grossWins = 0;
@@ -126,19 +153,19 @@
             totalPnL += trade.pnl;
             runningBalance += trade.pnl;
             
-            // Track win/loss metrics
             if (trade.pnl > 0) {
                 wins++;
                 grossWins += trade.pnl;
-            } else {
+            } else if (trade.pnl < 0) {
                 grossLosses += Math.abs(trade.pnl);
             }
 
             // Append data structures for chart plotting
-            chartLabels.push(trade.timestamp.split(' ')[0]); // Using just date for neatness
+            // Only grabbing the date portion for the chart X-axis
+            chartLabels.push(trade.timestamp.split(' ')[0] || trade.timestamp); 
             chartData.push(runningBalance);
 
-            // Dynamically construct table row
+            // Construct table row
             const pnlClass = trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
             const sign = trade.pnl >= 0 ? '+' : '';
             
@@ -156,7 +183,7 @@
             tableBody.appendChild(row);
         });
 
-        // Calculate and render structural stats
+        // Dashboard Stat Rendering
         const finalBalance = STARTING_BALANCE + totalPnL;
         const winRatePct = trades.length > 0 ? (wins / trades.length) * 100 : 0;
         const profitFactor = grossLosses === 0 ? grossWins : (grossWins / grossLosses);
@@ -164,14 +191,14 @@
         document.getElementById('current-balance').innerText = `$${finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         
         const pnlEl = document.getElementById('net-pnl');
-        pnlEl.innerText = `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toFixed(2)}`;
+        pnlEl.innerText = `${totalPnL >= 0 ? '+' : ''}$${totalPnL.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         pnlEl.className = `text-2xl font-bold tracking-tight mt-1 font-mono ${totalPnL >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
 
         document.getElementById('win-rate').innerText = `${winRatePct.toFixed(1)}%`;
         document.getElementById('profit-factor').innerText = profitFactor.toFixed(2);
         document.getElementById('total-trades').innerText = trades.length;
 
-        // 4. Initialize Chart.js configuration
+        // Equity Curve Setup
         const ctx = document.getElementById('equityChart').getContext('2d');
         new Chart(ctx, {
             type: 'line',
@@ -193,17 +220,15 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
+                plugins: { legend: { display: false } },
                 scales: {
                     x: {
                         grid: { color: '#334155', drawBorder: false },
-                        ticks: { color: '#94a3b8' }
+                        ticks: { color: '#94a3b8', maxTicksLimit: 10 }
                     },
                     y: {
                         grid: { color: '#334155', drawBorder: false },
-                        ticks: { color: '#94a3b8', callback: (value) => '$' + value }
+                        ticks: { color: '#94a3b8', callback: (value) => '$' + value.toLocaleString() }
                     }
                 }
             }
