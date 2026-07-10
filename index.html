@@ -164,15 +164,22 @@ Timestamp,Symbol,Contracts,Entry Price,Exit Price,Pct PnL,Net Profit ($)
             const parsedTrades = [];
             
             for (let i = 1; i < lines.length; i++) {
-                const row = lines[i].split(',');
+                // Advanced split: splits by comma, but ignores commas inside double quotes (e.g. "$1,500.00")
+                const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
                 if (row.length < 7) continue; 
                 
-                const cleanNumber = (str) => parseFloat(str.replace(/[^0-9.-]+/g, ''));
+                const cleanNumber = (str) => {
+                    if (!str) return 0;
+                    // Remove quotes, commas, dollar signs, spaces, letters, etc. Keep digits, dots, and minus signs.
+                    const cleaned = str.replace(/[^0-9.-]+/g, '');
+                    const val = parseFloat(cleaned);
+                    return isNaN(val) ? 0 : val;
+                };
 
                 parsedTrades.push({
-                    timestamp: row[0].trim(),
-                    symbol: row[1].trim(),
-                    contracts: parseInt(row[2]),
+                    timestamp: row[0].replace(/"/g, '').trim(),
+                    symbol: row[1].replace(/"/g, '').trim(),
+                    contracts: parseInt(row[2].replace(/[^0-9.-]+/g, '')) || 0,
                     entry: cleanNumber(row[3]),
                     exit: cleanNumber(row[4]),
                     pct: cleanNumber(row[5]),
