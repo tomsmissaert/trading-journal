@@ -163,13 +163,14 @@
             const parsedTrades = [];
             
             for (let i = 1; i < lines.length; i++) {
-                // Advanced split: splits by comma, but ignores commas inside double quotes (e.g. "$1,500.00")
+                // Advanced split: splits by comma, but ignores commas inside double quotes
                 const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                if (row.length < 7) continue; 
+                
+                // Ignore empty lines, trailing commas, or summary rows lacking a true timestamp
+                if (row.length < 7 || !row[0] || row[0].trim().length < 5) continue; 
                 
                 const cleanNumber = (str) => {
                     if (!str) return 0;
-                    // Remove quotes, commas, dollar signs, spaces, letters, etc. Keep digits, dots, and minus signs.
                     const cleaned = str.replace(/[^0-9.-]+/g, '');
                     const val = parseFloat(cleaned);
                     return isNaN(val) ? 0 : val;
@@ -219,8 +220,16 @@
             const dateStr = trade.timestamp.split(' ')[0] || trade.timestamp; 
             dailyBalances[dateStr] = runningBalance;
 
-            // 2. Group for Monthly Stats
-            const monthStr = trade.timestamp.substring(0, 7); // Extracts "YYYY-MM"
+            // 2. Group for Monthly Stats safely
+            let monthStr;
+            const d = new Date(trade.timestamp.replace(' ', 'T'));
+            if (!isNaN(d.getTime())) {
+                // Creates robust YYYY-MM format
+                monthStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+            } else {
+                monthStr = trade.timestamp.substring(0, 7); // Fallback
+            }
+
             if (!monthlyData[monthStr]) monthlyData[monthStr] = 0;
             monthlyData[monthStr] += trade.pnl;
 
@@ -240,7 +249,6 @@
                 <td class="px-6 py-3.5 text-right font-semibold ${pnlClass}">${sign}$${trade.pnl.toFixed(2)}</td>
             `;
             
-            // PREPEND instead of appendChild so newest items are inserted at the very top of the table
             tableBody.prepend(row);
         });
 
@@ -267,8 +275,10 @@
         // Render Monthly Table
         const monthlyTableBody = document.getElementById('monthly-table-body');
         const formatMonth = (str) => {
-            const [year, month] = str.split('-');
-            const date = new Date(year, parseInt(month) - 1);
+            const parts = str.split('-');
+            if (parts.length !== 2) return str; // Safe fallback if completely unmatched
+            const date = new Date(parts[0], parseInt(parts[1]) - 1);
+            if (isNaN(date.getTime())) return str;
             return date.toLocaleString('default', { month: 'long', year: 'numeric' });
         };
 
