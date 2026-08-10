@@ -35,7 +35,7 @@
         </div>
 
         <!-- Metric Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Current Balance</p>
                 <p id="current-balance" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
@@ -54,39 +54,77 @@
             </div>
             <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
                 <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Profit Factor</p>
-                <p id="profit-factor" class="text-2xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
+                <p id="profit-factor" class="text-xl font-bold tracking-tight text-white mt-1 font-mono">...</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Average Win</p>
+                <p id="avg-win" class="text-xl font-bold tracking-tight text-emerald-400 mt-1 font-mono">...</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Average Loss</p>
+                <p id="avg-loss" class="text-xl font-bold tracking-tight text-rose-400 mt-1 font-mono">...</p>
+            </div>
+            <div class="bg-cardBg p-5 rounded-xl border border-slate-800">
+                <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Max Drawdown</p>
+                <p id="max-dd" class="text-xl font-bold tracking-tight text-rose-400 mt-1 font-mono">...</p>
             </div>
         </div>
 
-        <!-- Middle Section: Chart & Monthly Stats -->
+        <!-- Middle Section: Charts & Monthly Stats -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Chart Section (Takes up 2/3 width on large screens) -->
-            <div class="lg:col-span-2 bg-cardBg p-6 rounded-xl border border-slate-800">
-                <h2 class="text-lg font-semibold text-white mb-4">Equity Curve (End of Day)</h2>
-                <div class="h-80 w-full">
-                    <canvas id="equityChart"></canvas>
+            
+            <!-- Left Side Charts -->
+            <div class="lg:col-span-2 flex flex-col space-y-6">
+                <div class="bg-cardBg p-6 rounded-xl border border-slate-800">
+                    <h2 class="text-lg font-semibold text-white mb-4">Equity Curve (End of Day)</h2>
+                    <div class="h-64 w-full">
+                        <canvas id="equityChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="bg-cardBg p-6 rounded-xl border border-slate-800">
+                    <h2 class="text-lg font-semibold text-white mb-4">Daily Net P&L <span class="text-xs font-normal text-slate-400 ml-2">(Click bars to filter log)</span></h2>
+                    <div class="h-48 w-full cursor-pointer">
+                        <canvas id="dailyBarChart"></canvas>
+                    </div>
                 </div>
             </div>
 
-            <!-- Monthly Performance (Takes up 1/3 width) -->
-            <div class="bg-cardBg p-6 rounded-xl border border-slate-800 flex flex-col">
-                <h2 class="text-lg font-semibold text-white mb-4">Monthly Performance</h2>
-                <div class="flex-grow overflow-y-auto">
-                    <table class="w-full text-left border-collapse">
-                        <tbody id="monthly-table-body" class="divide-y divide-slate-800 text-sm font-mono">
-                            <!-- Loaded dynamically -->
-                        </tbody>
-                    </table>
+            <!-- Right Side Stats -->
+            <div class="flex flex-col space-y-6">
+                <div class="bg-cardBg p-6 rounded-xl border border-slate-800 flex-grow">
+                    <h2 class="text-lg font-semibold text-white mb-4">Monthly Performance</h2>
+                    <div class="overflow-y-auto">
+                        <table class="w-full text-left border-collapse">
+                            <tbody id="monthly-table-body" class="divide-y divide-slate-800 text-sm font-mono">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-cardBg p-6 rounded-xl border border-slate-800">
+                    <h2 class="text-lg font-semibold text-white mb-4 text-center">Calls vs Puts Win Rates</h2>
+                    <div class="h-48 w-full flex justify-center">
+                        <canvas id="typeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Trades Log Table -->
-        <div class="bg-cardBg rounded-xl border border-slate-800 overflow-hidden">
+        <div class="bg-cardBg rounded-xl border border-slate-800 overflow-hidden mt-6">
             <div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-                <h2 class="text-lg font-semibold text-white">Executed Trades Log</h2>
+                <div class="flex items-center space-x-4">
+                    <h2 class="text-lg font-semibold text-white">Executed Trades Log</h2>
+                    <!-- Dynamic Filter Badge -->
+                    <button id="clear-filter-btn" class="hidden text-xs bg-slate-700 hover:bg-slate-600 text-white px-3 py-1 rounded-full transition-colors flex items-center space-x-1" onclick="resetTableFilter()">
+                        <span id="filter-text"></span>
+                        <span class="ml-1 font-bold text-rose-400">×</span>
+                    </button>
+                </div>
                 <div class="text-xs text-slate-400">
-                    Total Trades: <span id="total-trades" class="font-mono text-white font-semibold">0</span>
+                    Visible Trades: <span id="total-trades" class="font-mono text-white font-semibold">0</span>
                 </div>
             </div>
             <div class="overflow-x-auto max-h-[600px]">
@@ -134,10 +172,7 @@
             const parsedTrades = [];
             
             for (let i = 1; i < lines.length; i++) {
-                // Advanced split: splits by comma, but ignores commas inside double quotes
                 const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                
-                // Ignore empty lines, trailing commas, or summary rows lacking a true timestamp
                 if (row.length < 7 || !row[0] || row[0].trim().length < 5) continue; 
                 
                 const cleanNumber = (str) => {
@@ -160,75 +195,69 @@
             return parsedTrades;
         }
 
-        // Keep sorted chronologically (oldest to newest) to process math correctly
         const trades = parseCSV(csvData).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
         // Analytics variables
-        let totalPnL = 0;
-        let wins = 0;
-        let grossWins = 0;
-        let grossLosses = 0;
+        let totalPnL = 0, wins = 0, losses = 0, grossWins = 0, grossLosses = 0;
+        let callWins = 0, callLosses = 0, putWins = 0, putLosses = 0;
+        let runningBalance = STARTING_BALANCE;
+        let highestBalance = STARTING_BALANCE;
+        let maxDrawdownPct = 0;
         
         // Grouping Data Structures
         const dailyBalances = { "Start": STARTING_BALANCE };
-        let runningBalance = STARTING_BALANCE;
+        const dailyPnL = {}; 
         const monthlyData = {}; 
 
-        const tableBody = document.getElementById('trade-table-body');
-
+        // Initial Data Processing pass for macro stats
         trades.forEach(trade => {
             totalPnL += trade.pnl;
             runningBalance += trade.pnl;
             
+            // Drawdown calculation
+            if (runningBalance > highestBalance) highestBalance = runningBalance;
+            const currentDrawdown = ((highestBalance - runningBalance) / highestBalance) * 100;
+            if (currentDrawdown > maxDrawdownPct) maxDrawdownPct = currentDrawdown;
+
+            // Win/Loss & Call/Put logic
+            const isCall = trade.symbol.includes('C00');
             if (trade.pnl > 0) {
                 wins++;
                 grossWins += trade.pnl;
+                isCall ? callWins++ : putWins++;
             } else if (trade.pnl < 0) {
+                losses++;
                 grossLosses += Math.abs(trade.pnl);
+                isCall ? callLosses++ : putLosses++;
             }
 
-            // 1. Group for the Chart (Overwrites to keep only the End-of-Day balance)
+            // Groupings
             const dateStr = trade.timestamp.split(' ')[0] || trade.timestamp; 
             dailyBalances[dateStr] = runningBalance;
+            
+            if (!dailyPnL[dateStr]) dailyPnL[dateStr] = 0;
+            dailyPnL[dateStr] += trade.pnl;
 
-            // 2. Group for Monthly Stats safely
             let monthStr;
             const d = new Date(trade.timestamp.replace(' ', 'T'));
             if (!isNaN(d.getTime())) {
-                // Creates robust YYYY-MM format
                 monthStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
             } else {
-                monthStr = trade.timestamp.substring(0, 7); // Fallback
+                monthStr = trade.timestamp.substring(0, 7); 
             }
-
             if (!monthlyData[monthStr]) monthlyData[monthStr] = 0;
             monthlyData[monthStr] += trade.pnl;
-
-            // Construct main table row
-            const pnlClass = trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
-            const sign = trade.pnl >= 0 ? '+' : '';
-            
-            const row = document.createElement('tr');
-            row.className = 'hover:bg-slate-800/50 transition-colors border-b border-slate-800/50';
-            row.innerHTML = `
-                <td class="px-6 py-3.5 text-slate-400 whitespace-nowrap">${trade.timestamp}</td>
-                <td class="px-6 py-3.5 text-slate-200 font-semibold">${trade.symbol}</td>
-                <td class="px-6 py-3.5 text-right text-slate-300">${trade.contracts}</td>
-                <td class="px-6 py-3.5 text-right text-slate-300">$${trade.entry.toFixed(2)}</td>
-                <td class="px-6 py-3.5 text-right text-slate-300">$${trade.exit.toFixed(2)}</td>
-                <td class="px-6 py-3.5 text-right ${pnlClass}">${sign}${trade.pct.toFixed(1)}%</td>
-                <td class="px-6 py-3.5 text-right font-semibold ${pnlClass}">${sign}$${trade.pnl.toFixed(2)}</td>
-            `;
-            
-            tableBody.prepend(row);
         });
 
-        // Dashboard Stat Rendering
+        // Calculate final stats
         const finalBalance = STARTING_BALANCE + totalPnL;
         const totalReturnPct = (totalPnL / STARTING_BALANCE) * 100;
         const winRatePct = trades.length > 0 ? (wins / trades.length) * 100 : 0;
         const profitFactor = grossLosses === 0 ? grossWins : (grossWins / grossLosses);
+        const avgWin = wins > 0 ? (grossWins / wins) : 0;
+        const avgLoss = losses > 0 ? (grossLosses / losses) : 0;
 
+        // Render Stats
         document.getElementById('current-balance').innerText = `$${finalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         
         const pnlEl = document.getElementById('net-pnl');
@@ -241,13 +270,15 @@
 
         document.getElementById('win-rate').innerText = `${winRatePct.toFixed(1)}%`;
         document.getElementById('profit-factor').innerText = profitFactor.toFixed(2);
-        document.getElementById('total-trades').innerText = trades.length;
+        document.getElementById('avg-win').innerText = `$${avgWin.toFixed(2)}`;
+        document.getElementById('avg-loss').innerText = `-$${avgLoss.toFixed(2)}`;
+        document.getElementById('max-dd').innerText = `-${maxDrawdownPct.toFixed(1)}%`;
 
         // Render Monthly Table
         const monthlyTableBody = document.getElementById('monthly-table-body');
         const formatMonth = (str) => {
             const parts = str.split('-');
-            if (parts.length !== 2) return str; // Safe fallback if completely unmatched
+            if (parts.length !== 2) return str; 
             const date = new Date(parts[0], parseInt(parts[1]) - 1);
             if (isNaN(date.getTime())) return str;
             return date.toLocaleString('default', { month: 'long', year: 'numeric' });
@@ -264,18 +295,48 @@
             monthlyTableBody.appendChild(row);
         });
 
-        // Equity Curve Setup (Using Daily Aggregation)
-        const chartLabels = Object.keys(dailyBalances);
-        const chartData = Object.values(dailyBalances);
+        // Dynamic Table Rendering Function
+        const tableBody = document.getElementById('trade-table-body');
+        function renderTable(tradesToRender) {
+            tableBody.innerHTML = ''; // Clear current rows
+            document.getElementById('total-trades').innerText = tradesToRender.length;
+            
+            tradesToRender.forEach(trade => {
+                const pnlClass = trade.pnl >= 0 ? 'text-emerald-400' : 'text-rose-400';
+                const sign = trade.pnl >= 0 ? '+' : '';
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-slate-800/50 transition-colors border-b border-slate-800/50';
+                row.innerHTML = `
+                    <td class="px-6 py-3.5 text-slate-400 whitespace-nowrap">${trade.timestamp}</td>
+                    <td class="px-6 py-3.5 text-slate-200 font-semibold">${trade.symbol}</td>
+                    <td class="px-6 py-3.5 text-right text-slate-300">${trade.contracts}</td>
+                    <td class="px-6 py-3.5 text-right text-slate-300">$${trade.entry.toFixed(2)}</td>
+                    <td class="px-6 py-3.5 text-right text-slate-300">$${trade.exit.toFixed(2)}</td>
+                    <td class="px-6 py-3.5 text-right ${pnlClass}">${sign}${trade.pct.toFixed(1)}%</td>
+                    <td class="px-6 py-3.5 text-right font-semibold ${pnlClass}">${sign}$${trade.pnl.toFixed(2)}</td>
+                `;
+                tableBody.prepend(row); // Prepend to show newest at top
+            });
+        }
 
-        const ctx = document.getElementById('equityChart').getContext('2d');
-        new Chart(ctx, {
+        // Initially render all trades
+        renderTable(trades);
+
+        // Function to reset table filter
+        window.resetTableFilter = function() {
+            renderTable(trades);
+            document.getElementById('clear-filter-btn').classList.add('hidden');
+        };
+
+        // 1. Equity Curve Chart
+        const equityCtx = document.getElementById('equityChart').getContext('2d');
+        new Chart(equityCtx, {
             type: 'line',
             data: {
-                labels: chartLabels,
+                labels: Object.keys(dailyBalances),
                 datasets: [{
                     label: 'End of Day Equity ($)',
-                    data: chartData,
+                    data: Object.values(dailyBalances),
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.05)',
                     borderWidth: 2,
@@ -284,22 +345,81 @@
                     pointBackgroundColor: '#1e293b',
                     pointBorderColor: '#10b981',
                     pointHoverRadius: 6,
-                    stepped: false
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
-                    x: {
-                        grid: { color: '#334155', drawBorder: false },
-                        ticks: { color: '#94a3b8', maxTicksLimit: 12 }
-                    },
-                    y: {
-                        grid: { color: '#334155', drawBorder: false },
-                        ticks: { color: '#94a3b8', callback: (value) => '$' + value.toLocaleString() }
+                    x: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#94a3b8', callback: val => '$' + val.toLocaleString() } }
+                }
+            }
+        });
+
+        // 2. Daily Net P&L Histogram (Interactive)
+        const barCtx = document.getElementById('dailyBarChart').getContext('2d');
+        const pnlDates = Object.keys(dailyPnL);
+        const pnlValues = Object.values(dailyPnL);
+        const barColors = pnlValues.map(val => val >= 0 ? '#10b981' : '#f43f5e');
+
+        const dailyChart = new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: pnlDates,
+                datasets: [{
+                    label: 'Daily P&L',
+                    data: pnlValues,
+                    backgroundColor: barColors,
+                    borderRadius: 4,
+                    hoverBackgroundColor: '#94a3b8' // Highlight on hover
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false, drawBorder: false }, ticks: { color: '#94a3b8' } },
+                    y: { grid: { color: '#334155', drawBorder: false }, ticks: { color: '#94a3b8', callback: val => '$' + val } }
+                },
+                // Interactivity for filtering
+                onClick: (e, activeElements) => {
+                    if (activeElements.length > 0) {
+                        const dataIndex = activeElements[0].index;
+                        const clickedDate = pnlDates[dataIndex];
+                        
+                        // Filter the trades
+                        const filteredTrades = trades.filter(t => t.timestamp.startsWith(clickedDate));
+                        renderTable(filteredTrades);
+                        
+                        // Update UI to show filter is active
+                        document.getElementById('filter-text').innerText = `Filtered: ${clickedDate}`;
+                        document.getElementById('clear-filter-btn').classList.remove('hidden');
                     }
+                },
+                onHover: (event, chartElement) => {
+                    event.native.target.style.cursor = chartElement[0] ? 'pointer' : 'default';
+                }
+            }
+        });
+
+        // 3. Calls vs Puts Doughnut Chart
+        const typeCtx = document.getElementById('typeChart').getContext('2d');
+        new Chart(typeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Call Wins', 'Put Wins', 'Call Losses', 'Put Losses'],
+                datasets: [{
+                    data: [callWins, putWins, callLosses, putLosses],
+                    backgroundColor: ['#10b981', '#34d399', '#f43f5e', '#fb7185'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: '#e2e8f0', boxWidth: 12 } }
                 }
             }
         });
